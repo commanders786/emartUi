@@ -1,0 +1,102 @@
+.homepage-container {
+  font-family: Arial, sans-serif;
+  padding: 0;
+  margin: 0;
+  background: #f9f9f9;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #22d71b;
+  padding: 15px 30px;
+  color: white;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.tabs {
+  display: flex;
+  gap: 20px;
+}
+
+.tab {
+  cursor: pointer;
+  font-size: 18px;
+  padding: 5px 15px;
+  border-radius: 6px;
+  transition: 0.3s;
+}
+
+.tab:hover,
+.tab.active {
+  background-color: #85d782;
+}
+
+.content {
+  padding: 30px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+th,
+td {
+  padding: 12px 20px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background-color: #f0f0f0;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.controls input {
+  padding: 8px 12px;
+  width: 250px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.controls select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #eaeaea;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pagination button.active-page,
+.pagination button:hover {
+  background-color: #22d71b;
+  color: white;
+}
