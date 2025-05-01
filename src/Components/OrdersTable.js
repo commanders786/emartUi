@@ -17,7 +17,8 @@ const OrdersTable = ({
 
   const filteredOrders = ordersData.filter(
     (order) =>
-      order.id.toLowerCase().includes(search.toLowerCase()) &&
+      (order.id.toLowerCase().includes(search.toLowerCase()) ||
+        order.user.toLowerCase().includes(search.toLowerCase())) &&
       (filter ? order.feedback === filter : true)
   );
 
@@ -36,7 +37,7 @@ const OrdersTable = ({
       <div className="controls">
         <input
           type="text"
-          placeholder="Search by Order ID"
+          placeholder="Search by Order ID or User"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -54,7 +55,7 @@ const OrdersTable = ({
             <th>Order ID</th>
             <th>User</th>
             <th>Bill Amount</th>
-            <th>Date</th>
+            <th>Date & Time</th>
             <th>Feedback</th>
             <th>Receipt</th>
           </tr>
@@ -64,9 +65,9 @@ const OrdersTable = ({
             <tr key={order.id}>
               <td>{order.id}</td>
               <td>{order.user}</td>
-              <td>{order.bill_amount}</td>
-              <td>{new Date(order.created_at).toLocaleDateString()}</td>
-              <td>{order.feedback}</td>
+              <td>₹{order.bill_amount}</td>
+              <td>{new Date(order.created_at).toLocaleString()}</td>
+              <td>{order.feedback || "—"}</td>
               <td>
                 <button onClick={() => openModal(order.receipt)}>
                   👁️ View
