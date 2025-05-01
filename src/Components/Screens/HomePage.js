@@ -64,7 +64,9 @@ const HomePage = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/orders");
+        const response = await fetch(
+          "https://dc95-171-76-84-29.ngrok-free.app/orders"
+        );
         const data = await response.json();
 
         if (data.length !== ordersData.length && userInteracted.current) {
@@ -84,7 +86,9 @@ const HomePage = () => {
 
     const fetchUsers = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/users");
+        const response = await fetch(
+          "https://dc95-171-76-84-29.ngrok-free.app/users"
+        );
         const data = await response.json();
         setUsersData((prev) => {
           const newUsers = data.filter(
