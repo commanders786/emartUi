@@ -65,7 +65,12 @@ const HomePage = () => {
     const fetchOrders = async () => {
       try {
         const response = await fetch(
-          "https://dc95-171-76-84-29.ngrok-free.app/orders"
+          "https://dc95-171-76-84-29.ngrok-free.app/orders",
+          {
+            headers: {
+              "ngrok-skip-browser-warning": "true", // Add this header
+            },
+          }
         );
         const data = await response.json();
 
@@ -85,11 +90,22 @@ const HomePage = () => {
     };
 
     const fetchUsers = async () => {
+      console.log("Response status:");
+
       try {
         const response = await fetch(
-          "https://dc95-171-76-84-29.ngrok-free.app/users"
+          "https://dc95-171-76-84-29.ngrok-free.app/users",
+          {
+            headers: {
+              "ngrok-skip-browser-warning": "true", // Add this header
+            },
+          }
         );
         const data = await response.json();
+        console.log("Response status:", response.status);
+        console.log("Response status text:", response.statusText);
+        console.log("Response headers:", response.headers.get("Content-Type"));
+
         setUsersData((prev) => {
           const newUsers = data.filter(
             (user) => !prev.some((u) => u.id === user.id)
