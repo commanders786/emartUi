@@ -5,7 +5,14 @@
   background: #f9f9f9;
   height: 100vh;
 }
-
+.caption {
+  font-size: 14px;
+  color: #fffefe;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  text-align: center;
+  font-weight: normal;
+}
 .topbar {
   display: flex;
   align-items: center;

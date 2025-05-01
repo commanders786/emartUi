@@ -14,6 +14,7 @@ const OrdersTable = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState(""); // State for copy feedback
 
   const filteredOrders = ordersData.filter(
     (order) =>
@@ -30,6 +31,22 @@ const OrdersTable = ({
   const openModal = (receiptText) => {
     setSelectedReceipt(receiptText);
     setShowModal(true);
+    setCopyFeedback(""); // Reset feedback when opening modal
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      // Replace \n with actual newlines for clean copying
+      const textToCopy = selectedReceipt.replace(/\\n/g, "\n");
+      await navigator.clipboard.writeText(textToCopy);
+      setCopyFeedback("Copied!"); // Show success message
+      // Clear feedback after 2 seconds
+      setTimeout(() => setCopyFeedback(""), 2000);
+    } catch (error) {
+      console.error("Failed to copy text:", error);
+      setCopyFeedback("Failed to copy");
+      setTimeout(() => setCopyFeedback(""), 2000);
+    }
   };
 
   return (
@@ -70,7 +87,11 @@ const OrdersTable = ({
               <td>{order.feedback || "—"}</td>
               <td>
                 <button onClick={() => openModal(order.receipt)}>
-                  👁️ View
+                  <img
+                    src="/assets/show.png"
+                    alt="View Receipt"
+                    className="view-icon"
+                  />{" "}
                 </button>
               </td>
             </tr>
@@ -95,10 +116,65 @@ const OrdersTable = ({
             <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
               {selectedReceipt.replace(/\\n/g, "\n")}
             </pre>
-            <button onClick={() => setShowModal(false)}>Close</button>
+            <div className="modal-buttons">
+              <button onClick={copyToClipboard}>Copy</button>
+              <button onClick={() => setShowModal(false)}>Close</button>
+              {copyFeedback && (
+                <span className="copy-feedback">{copyFeedback}</span>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      <style>
+        {`
+          .modal-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+          }
+          .modal-buttons button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color:rgb(56, 226, 47);
+            color: white;
+            font-size: 14px;
+          }
+          .modal-buttons button:hover {
+            background-color:rgba(33, 139, 12, 0.89);
+          }
+          .copy-feedback {
+            font-size: 12px;
+            color: #28a745;
+          }
+          .copy-feedback.error {
+            color: #dc3545;
+          }
+          .view-icon {
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+            margin-right: 4px;
+          }
+          td button {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            background-color:rgb(255, 255, 255);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+          td button:hover {
+            background-color:rgb(255, 255, 255);
+          }
+        `}
+      </style>
     </>
   );
 };

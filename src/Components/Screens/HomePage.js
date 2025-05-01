@@ -133,7 +133,10 @@ const HomePage = () => {
   return (
     <div className="homepage-container">
       <div className="topbar">
-        <div className="logo">Anghadii</div>
+        <div className="logo">
+          അങ്ങാടി <div className="caption">Market is in your chat</div>
+        </div>
+
         <div className="tabs">
           <div
             className={`tab ${tab === "orders" ? "active" : ""}`}
