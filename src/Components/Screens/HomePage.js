@@ -1,37 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import UsersTable from "../UsersTable";
+import OrdersTable from "../OrdersTable";
 import "./HomePage.css";
-
-const ordersData = [
-  { id: "ORD001", customer: "Alice", date: "2025-04-01", status: "Delivered" },
-  { id: "ORD002", customer: "Bob", date: "2025-04-02", status: "Pending" },
-  { id: "ORD003", customer: "Charlie", date: "2025-04-03", status: "Shipped" },
-  // Add more as needed
-];
-
-const usersData = [
-  {
-    id: "USR001",
-    name: "Alice",
-    email: "alice@example.com",
-    phone: "9645846341",
-    joinDate: "2025-04-01",
-  },
-  {
-    id: "USR002",
-    name: "Bob",
-    email: "bob@example.com",
-    phone: "9645846341",
-    joinDate: "2025-04-02",
-  },
-  {
-    id: "USR003",
-    name: "Charlie",
-    email: "charlie@example.com",
-    phone: "9645846340",
-    joinDate: "2025-04-03",
-  },
-  // Add more users
-];
 
 const HomePage = () => {
   const [tab, setTab] = useState("orders");
@@ -39,116 +9,106 @@ const HomePage = () => {
   const [filter, setFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [joinDateSearch, setJoinDateSearch] = useState("");
+  const [ordersData, setOrdersData] = useState([]);
+  const [usersData, setUsersData] = useState([]);
+
   const itemsPerPage = 10;
 
-  const filteredOrders = ordersData.filter(
-    (order) =>
-      order.id.toLowerCase().includes(search.toLowerCase()) &&
-      (filter ? order.status === filter : true)
-  );
+  // ✅ Setup sound & user interaction flags
+  const alertSound = useRef(null);
+  const userInteracted = useRef(false);
 
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // ✅ Track first user interaction to allow audio
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      userInteracted.current = true;
+      window.removeEventListener("click", handleUserInteraction);
+      window.removeEventListener("keydown", handleUserInteraction);
+    };
 
-  const renderOrdersTable = () => (
-    <>
-      <div className="controls">
-        <input
-          type="text"
-          placeholder="Search by Order ID"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select onChange={(e) => setFilter(e.target.value)} value={filter}>
-          <option value="">All</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Pending">Pending</option>
-          <option value="Shipped">Shipped</option>
-        </select>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Customer</th>
-            <th>Date</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedOrders.map((order) => (
-            <tr key={order.id}>
-              <td>{order.id}</td>
-              <td>{order.customer}</td>
-              <td>{order.date}</td>
-              <td>{order.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="pagination">
-        {Array.from({
-          length: Math.ceil(filteredOrders.length / itemsPerPage),
-        }).map((_, i) => (
-          <button key={i} onClick={() => setCurrentPage(i + 1)}>
-            {i + 1}
-          </button>
-        ))}
-      </div>
-    </>
-  );
+    window.addEventListener("click", handleUserInteraction);
+    window.addEventListener("keydown", handleUserInteraction);
 
-  const renderUsersTable = () => (
-    <>
-      <div className="controls">
-        <input
-          type="text"
-          placeholder="Search by phone number"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="search-input"
-        />
-        <input
-          type="date"
-          value={joinDateSearch}
-          onChange={(e) => setJoinDateSearch(e.target.value)}
-          className="search-input"
-          style={{ marginLeft: "10px" }}
-        />
-      </div>
+    return () => {
+      window.removeEventListener("click", handleUserInteraction);
+      window.removeEventListener("keydown", handleUserInteraction);
+    };
+  }, []);
 
-      <table>
-        <thead>
-          <tr>
-            <th>User ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Join Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usersData
-            .filter(
-              (user) =>
-                user.phone.includes(search) &&
-                (joinDateSearch ? user.joinDate === joinDateSearch : true)
-            )
-            .map((user) => (
-              <tr key={user.id}>
-                <td>{user.id}</td>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.phone}</td>
-                <td>{user.joinDate}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
-    </>
-  );
+  // ✅ Initialize and load audio when the component mounts
+  useEffect(() => {
+    alertSound.current = new Audio("/assets/error_sound-221445.mp3"); // Ensure the path is correct
+    alertSound.current.load();
+
+    alertSound.current.onerror = (err) => {
+      console.error("❌ Audio load error:", err);
+    };
+
+    alertSound.current.onloadeddata = () => {
+      console.log("✅ Audio loaded successfully");
+    };
+  }, []);
+
+  // ✅ Handle audio play when new data is fetched
+  const handlePlaySound = () => {
+    if (userInteracted.current) {
+      alertSound.current.play().catch((err) => {
+        console.warn("❌ Audio play error:", err.message);
+      });
+    } else {
+      console.log("❌ User interaction required for sound");
+    }
+  };
+
+  // Fetch orders and users data
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/orders");
+        const data = await response.json();
+
+        if (data.length !== ordersData.length && userInteracted.current) {
+          handlePlaySound(); // Play sound if new orders are fetched
+        }
+
+        setOrdersData((prev) => {
+          const newOrders = data.filter(
+            (order) => !prev.some((o) => o.id === order.id)
+          );
+          return [...newOrders, ...prev];
+        });
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      }
+    };
+
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/users");
+        const data = await response.json();
+        setUsersData((prev) => {
+          const newUsers = data.filter(
+            (user) => !prev.some((u) => u.id === user.id)
+          );
+          return [...newUsers, ...prev];
+        });
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchOrders();
+    fetchUsers();
+
+    // Poll every 5 seconds
+    const interval = setInterval(() => {
+      fetchOrders();
+      fetchUsers();
+    }, 10000);
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, [ordersData.length]);
 
   return (
     <div className="homepage-container">
@@ -168,7 +128,26 @@ const HomePage = () => {
         </div>
       </div>
       <div className="content">
-        {tab === "orders" ? renderOrdersTable() : renderUsersTable()}
+        {tab === "orders" ? (
+          <OrdersTable
+            search={search}
+            setSearch={setSearch}
+            filter={filter}
+            setFilter={setFilter}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            ordersData={ordersData}
+          />
+        ) : (
+          <UsersTable
+            usersData={usersData}
+            search={search}
+            setSearch={setSearch}
+            joinDateSearch={joinDateSearch}
+            setJoinDateSearch={setJoinDateSearch}
+          />
+        )}
       </div>
     </div>
   );
