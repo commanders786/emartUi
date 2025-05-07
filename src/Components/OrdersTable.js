@@ -54,7 +54,7 @@ const OrdersTable = ({
     try {
       // Update backend
       const response = await fetch(
-        `http://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders/${orderId}`,
+        `https://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders/${orderId}`,
         {
           method: "PUT",
           headers: {

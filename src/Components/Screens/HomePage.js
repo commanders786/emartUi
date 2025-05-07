@@ -60,7 +60,7 @@ const HomePage = () => {
     const fetchOrders = async () => {
       try {
         const response = await fetch(
-          "http://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders"
+          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders"
         );
         const data = await response.json();
 
@@ -95,7 +95,7 @@ const HomePage = () => {
     const fetchUsers = async () => {
       try {
         const response = await fetch(
-          "http://python-whatsapp-bot-main-production-3c9c.up.railway.app/users"
+          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/users"
         );
         const data = await response.json();
 
