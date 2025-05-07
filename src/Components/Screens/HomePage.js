@@ -65,7 +65,7 @@ const HomePage = () => {
     const fetchOrders = async () => {
       try {
         const response = await fetch(
-          "https://23e8-14-143-207-234.ngrok-free.app/orders",
+          "https://52dc-171-76-81-167.ngrok-free.app/orders",
           {
             headers: {
               "ngrok-skip-browser-warning": "true", // Add this header
@@ -94,7 +94,7 @@ const HomePage = () => {
 
       try {
         const response = await fetch(
-          "https://23e8-14-143-207-234.ngrok-free.app/users",
+          "https://52dc-171-76-81-167.ngrok-free.app/users",
           {
             headers: {
               "ngrok-skip-browser-warning": "true", // Add this header
