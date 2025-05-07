@@ -14,11 +14,9 @@ const HomePage = () => {
 
   const itemsPerPage = 10;
 
-  // ✅ Setup sound & user interaction flags
   const alertSound = useRef(null);
   const userInteracted = useRef(false);
 
-  // ✅ Track first user interaction to allow audio
   useEffect(() => {
     const handleUserInteraction = () => {
       userInteracted.current = true;
@@ -35,9 +33,8 @@ const HomePage = () => {
     };
   }, []);
 
-  // ✅ Initialize and load audio when the component mounts
   useEffect(() => {
-    alertSound.current = new Audio("/assets/error_sound-221445.mp3"); // Ensure the path is correct
+    alertSound.current = new Audio("/assets/error_sound-221445.mp3");
     alertSound.current.load();
 
     alertSound.current.onerror = (err) => {
@@ -49,7 +46,6 @@ const HomePage = () => {
     };
   }, []);
 
-  // ✅ Handle audio play when new data is fetched
   const handlePlaySound = () => {
     if (userInteracted.current) {
       alertSound.current.play().catch((err) => {
@@ -60,29 +56,36 @@ const HomePage = () => {
     }
   };
 
-  // Fetch orders and users data
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const response = await fetch(
-          "https://52dc-171-76-81-167.ngrok-free.app/orders",
-          {
-            headers: {
-              "ngrok-skip-browser-warning": "true", // Add this header
-            },
-          }
+          "http://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders"
         );
         const data = await response.json();
 
+        // Debug: Log the response
+        console.log("Orders response:", data);
+
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          console.error("Orders data is not an array:", data);
+          return;
+        }
+
         if (data.length !== ordersData.length && userInteracted.current) {
-          handlePlaySound(); // Play sound if new orders are fetched
+          handlePlaySound();
         }
 
         setOrdersData((prev) => {
           const newOrders = data.filter(
             (order) => !prev.some((o) => o.id === order.id)
           );
-          return [...newOrders, ...prev];
+          const combined = [...newOrders, ...prev];
+          combined.sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          );
+          return combined;
         });
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -90,21 +93,20 @@ const HomePage = () => {
     };
 
     const fetchUsers = async () => {
-      console.log("Response status:");
-
       try {
         const response = await fetch(
-          "https://52dc-171-76-81-167.ngrok-free.app/users",
-          {
-            headers: {
-              "ngrok-skip-browser-warning": "true", // Add this header
-            },
-          }
+          "http://python-whatsapp-bot-main-production-3c9c.up.railway.app/users"
         );
         const data = await response.json();
-        console.log("Response status:", response.status);
-        console.log("Response status text:", response.statusText);
-        console.log("Response headers:", response.headers.get("Content-Type"));
+
+        // Debug: Log the response
+        console.log("Users response:", data);
+
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          console.error("Users data is not an array:", data);
+          return;
+        }
 
         setUsersData((prev) => {
           const newUsers = data.filter(
@@ -117,17 +119,15 @@ const HomePage = () => {
       }
     };
 
-    // Initial fetch
     fetchOrders();
     fetchUsers();
 
-    // Poll every 5 seconds
     const interval = setInterval(() => {
       fetchOrders();
       fetchUsers();
     }, 10000);
 
-    return () => clearInterval(interval); // Cleanup on unmount
+    return () => clearInterval(interval);
   }, [ordersData.length]);
 
   return (
@@ -150,6 +150,7 @@ const HomePage = () => {
           </div>
         </div>
       </div>
+
       <div className="content">
         {tab === "orders" ? (
           <OrdersTable
@@ -161,6 +162,7 @@ const HomePage = () => {
             setCurrentPage={setCurrentPage}
             itemsPerPage={itemsPerPage}
             ordersData={ordersData}
+            setOrders={setOrdersData}
           />
         ) : (
           <UsersTable

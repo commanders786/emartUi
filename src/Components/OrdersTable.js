@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./Screens/HomePage"; // Add minimal styling for modal & table
+import "./Screens/HomePage";
 import "./OrderTable.css";
 
 const OrdersTable = ({
@@ -11,17 +11,20 @@ const OrdersTable = ({
   setCurrentPage,
   itemsPerPage,
   ordersData,
+  setOrders,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState("");
-  const [copyFeedback, setCopyFeedback] = useState(""); // State for copy feedback
+  const [copyFeedback, setCopyFeedback] = useState("");
 
-  const filteredOrders = ordersData.filter(
-    (order) =>
-      (order.id.toLowerCase().includes(search.toLowerCase()) ||
-        order.user.toLowerCase().includes(search.toLowerCase())) &&
-      (filter ? order.feedback === filter : true)
-  );
+  const filteredOrders = ordersData
+    .filter(
+      (order) =>
+        (order.id.toLowerCase().includes(search.toLowerCase()) ||
+          order.user.toLowerCase().includes(search.toLowerCase())) &&
+        (filter ? order.feedback === filter : true)
+    )
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * itemsPerPage,
@@ -31,21 +34,50 @@ const OrdersTable = ({
   const openModal = (receiptText) => {
     setSelectedReceipt(receiptText);
     setShowModal(true);
-    setCopyFeedback(""); // Reset feedback when opening modal
+    setCopyFeedback("");
   };
 
   const copyToClipboard = async () => {
     try {
-      // Replace \n with actual newlines for clean copying
       const textToCopy = selectedReceipt.replace(/\\n/g, "\n");
       await navigator.clipboard.writeText(textToCopy);
-      setCopyFeedback("Copied!"); // Show success message
-      // Clear feedback after 2 seconds
+      setCopyFeedback("Copied!");
       setTimeout(() => setCopyFeedback(""), 2000);
     } catch (error) {
       console.error("Failed to copy text:", error);
       setCopyFeedback("Failed to copy");
       setTimeout(() => setCopyFeedback(""), 2000);
+    }
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      // Update backend
+      const response = await fetch(
+        `http://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders/${orderId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      // Update frontend state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Failed to update order status");
     }
   };
 
@@ -74,6 +106,7 @@ const OrdersTable = ({
             <th>Bill Amount</th>
             <th>Date & Time</th>
             <th>Feedback</th>
+            <th>Status</th>
             <th>Receipt</th>
           </tr>
         </thead>
@@ -83,15 +116,24 @@ const OrdersTable = ({
               <td>{order.id}</td>
               <td>{order.user}</td>
               <td>₹{order.bill_amount}</td>
-              <td>{new Date(order.created_at).toLocaleString()}</td>
+              <td>{order.created_at}</td>
               <td>{order.feedback || "—"}</td>
+              <td>
+                <select
+                  value={order.status}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                  className="bg-transparent outline-none">
+                  <option value="pending">pending</option>
+                  <option value="delivered">delivered</option>
+                </select>
+              </td>
               <td>
                 <button onClick={() => openModal(order.receipt)}>
                   <img
                     src="/assets/show.png"
                     alt="View Receipt"
                     className="view-icon"
-                  />{" "}
+                  />
                 </button>
               </td>
             </tr>
@@ -140,12 +182,12 @@ const OrdersTable = ({
             cursor: pointer;
             border: none;
             border-radius: 4px;
-            background-color:rgb(56, 226, 47);
+            background-color: rgb(56, 226, 47);
             color: white;
             font-size: 14px;
           }
           .modal-buttons button:hover {
-            background-color:rgba(33, 139, 12, 0.89);
+            background-color: rgba(33, 139, 12, 0.89);
           }
           .copy-feedback {
             font-size: 12px;
@@ -164,14 +206,14 @@ const OrdersTable = ({
             display: flex;
             align-items: center;
             padding: 6px 12px;
-            background-color:rgb(255, 255, 255);
+            background-color: white;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
           }
           td button:hover {
-            background-color:rgb(255, 255, 255);
+            background-color: white;
           }
         `}
       </style>
