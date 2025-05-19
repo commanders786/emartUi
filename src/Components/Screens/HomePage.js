@@ -137,8 +137,8 @@ const HomePage = () => {
     const interval = setInterval(() => {
       fetchOrders();
       fetchUsers();
-      fetchProducts();
-    }, 10000);
+      // fetchProducts();
+    }, 600000);
 
     return () => clearInterval(interval);
   }, [ordersData.length]);

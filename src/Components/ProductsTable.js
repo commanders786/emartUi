@@ -1,23 +1,89 @@
 import React, { useEffect, useState } from "react";
 
+// Loading Popup Component
+const LoadingPopup = () => {
+  console.log("LoadingPopup displayed at", new Date().toISOString());
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1000,
+      }}>
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "20px",
+          borderRadius: "8px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}>
+        <div
+          style={{
+            border: "5px solid #e0e0e0",
+            borderTop: "5px solid #007bff",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            animation: "spin 0.8s linear infinite",
+            willChange: "transform",
+          }}></div>
+        <p style={{ marginTop: "12px", fontSize: "16px", color: "#333" }}>
+          Updating...
+        </p>
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    </div>
+  );
+};
+
 const ProductsTable = () => {
   const [productsByCategory, setProductsByCategory] = useState({});
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [editedPrices, setEditedPrices] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Fetch data from ngrok URL
+  // Fetch products from API
+  const fetchProducts = async () => {
+    console.log("Fetching products at", new Date().toISOString());
+    try {
+      const response = await fetch(
+        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products"
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
+      }
+      const data = await response.json();
+      setProductsByCategory(data);
+    } catch (err) {
+      console.error("Failed to fetch /products:", err);
+    }
+  };
+
+  // Initial fetch on mount
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/products")
-      .then((res) => res.json())
-      .then((data) => {
-        setProductsByCategory(data);
-      })
-      .catch((err) => console.error("Failed to fetch:", err));
-  }, []);
+    fetchProducts();
+  }, []); // Empty dependency array ensures it runs only once on mount
 
-  // Get selected category or all
+  // Filter products by category and search
   const getFilteredProducts = () => {
     let all = [];
     for (const [cat, items] of Object.entries(productsByCategory)) {
@@ -25,23 +91,27 @@ const ProductsTable = () => {
         all = all.concat(items);
       }
     }
-
     return all.filter((product) =>
       product.name.toLowerCase().includes(search.toLowerCase())
     );
   };
 
+  // Handle price input changes
   const handlePriceChange = (id, newPrice) => {
     setEditedPrices((prev) => ({ ...prev, [id]: newPrice }));
   };
 
-  const handleUpdate = async (product) => {
+  // Update price via Facebook Graph API and refresh data
+  const handleUpdatePrice = async (product) => {
+    setLoading(true);
     const newPrice = editedPrices[product.id];
     const numericPrice = parseFloat(newPrice.replace(/[^\d.]/g, ""));
-    const updatedPrice = String(numericPrice * 100); // add 2 trailing zeros
+    const updatedPrice = String(numericPrice * 100);
 
     try {
-      const response = await fetch(
+      console.log("Starting price update at", new Date().toISOString());
+      // Update price
+      const priceResponse = await fetch(
         `https://graph.facebook.com/v22.0/${product.id}`,
         {
           method: "POST",
@@ -54,18 +124,25 @@ const ProductsTable = () => {
         }
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to update");
+      if (!priceResponse.ok) {
+        throw new Error("Failed to update price");
       }
+      console.log("Price update completed at", new Date().toISOString());
 
-      // Update local state
-      const updatedProducts = { ...productsByCategory };
-      for (const category in updatedProducts) {
-        updatedProducts[category] = updatedProducts[category].map((p) =>
-          p.id === product.id ? { ...p, price: `₹${numericPrice}` } : p
-        );
-      }
-      setProductsByCategory(updatedProducts);
+      // Fire /categorized and /products sequentially in the background
+      fetch(
+        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
+        { method: "GET" }
+      )
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to call /categorized");
+          return fetchProducts();
+        })
+        .catch((err) => {
+          console.error("Error in /categorized or /products:", err);
+        });
+
+      // Update local state for immediate feedback
       setEditedPrices((prev) => {
         const updated = { ...prev };
         delete updated[product.id];
@@ -74,8 +151,83 @@ const ProductsTable = () => {
       setSuccessMsg("Price updated successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
-      console.error(err);
-      alert("Failed to update price.");
+      console.error("Price update error:", err);
+      setErrorMsg("Failed to update price.");
+      setTimeout(() => setErrorMsg(""), 3000);
+    } finally {
+      setLoading(false);
+      console.log("LoadingPopup hidden at", new Date().toISOString());
+    }
+  };
+
+  // Toggle stock status via API and refresh data
+  const handleToggleStock = async (product) => {
+    setLoading(true);
+    const newAvailability =
+      product.availability === "in stock" ? "out of stock" : "in stock";
+
+    try {
+      console.log("Starting stock update at", new Date().toISOString());
+      // Update stock
+      const stockResponse = await fetch(
+        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/updateStock",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: product.id,
+            availability: newAvailability,
+          }),
+        }
+      );
+
+      if (!stockResponse.ok) {
+        throw new Error("Failed to update stock");
+      }
+      console.log("Stock update completed at", new Date().toISOString());
+
+      // Update local state immediately for UI feedback
+      setProductsByCategory((prev) => {
+        const updated = JSON.parse(JSON.stringify(prev)); // Deep clone
+        for (const category in updated) {
+          updated[category] = updated[category].map((p) =>
+            p.id === product.id ? { ...p, availability: newAvailability } : p
+          );
+        }
+        console.log(
+          "Updated stock status locally for product",
+          product.id,
+          "to",
+          newAvailability
+        );
+        return updated;
+      });
+
+      // Fire /categorized and /products sequentially in the background
+      fetch(
+        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
+        { method: "GET" }
+      )
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to call /categorized");
+          console.log("Categorized completed at", new Date().toISOString());
+          return fetchProducts();
+        })
+        .catch((err) => {
+          console.error("Error in /categorized or /products:", err);
+        });
+
+      setSuccessMsg(`Stock updated to ${newAvailability}!`);
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      console.error("Stock update error:", err);
+      setErrorMsg("Failed to update stock.");
+      setTimeout(() => setErrorMsg(""), 3000);
+    } finally {
+      setLoading(false);
+      console.log("LoadingPopup hidden at", new Date().toISOString());
     }
   };
 
@@ -83,6 +235,7 @@ const ProductsTable = () => {
 
   return (
     <div>
+      {loading && <LoadingPopup />}
       <div style={{ marginBottom: "1rem" }}>
         <input
           type="text"
@@ -105,6 +258,7 @@ const ProductsTable = () => {
       </div>
 
       {successMsg && <div style={{ color: "green" }}>{successMsg}</div>}
+      {errorMsg && <div style={{ color: "red" }}>{errorMsg}</div>}
 
       <table className="products-table">
         <thead>
@@ -112,7 +266,7 @@ const ProductsTable = () => {
             <th>Product ID</th>
             <th>Name</th>
             <th>Price (₹)</th>
-            {/* <th>Category</th> */}
+            <th>Availability</th>
             <th>Update</th>
           </tr>
         </thead>
@@ -135,16 +289,43 @@ const ProductsTable = () => {
                     style={{ width: "80px" }}
                   />
                 </td>
-                {/* <td>
-                  {
-                    Object.entries(productsByCategory).find(([cat, items]) =>
-                      items.some((item) => item.id === product.id)
-                    )?.[0]
-                  }
-                </td> */}
+                <td>
+                  <button
+                    onClick={() => handleToggleStock(product)}
+                    disabled={loading}
+                    style={{
+                      backgroundColor:
+                        product.availability === "in stock"
+                          ? "#28a745"
+                          : "#dc3545",
+                      color: "white",
+                      padding: "6px 12px",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      opacity: loading ? 0.6 : 1,
+                    }}>
+                    {product.availability === "in stock"
+                      ? "In Stock"
+                      : "Out of Stock"}
+                  </button>
+                </td>
                 <td>
                   {editedPrice !== originalPrice && (
-                    <button onClick={() => handleUpdate(product)}>
+                    <button
+                      onClick={() => handleUpdatePrice(product)}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: "#007bff",
+                        color: "white",
+                        padding: "6px 12px",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        opacity: loading ? 0.6 : 1,
+                      }}>
                       Update
                     </button>
                   )}
