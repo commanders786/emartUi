@@ -16,13 +16,22 @@ const OrdersTable = ({
   const [showModal, setShowModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+
+  const convertToIST = (utcDate) => {
+    const date = new Date(utcDate);
+    return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  };
 
   const filteredOrders = ordersData
     .filter(
       (order) =>
         (order.id.toLowerCase().includes(search.toLowerCase()) ||
           order.user.toLowerCase().includes(search.toLowerCase())) &&
-        (filter ? order.feedback === filter : true)
+        (filter ? order.feedback === filter : true) &&
+        (userSearch
+          ? order.user.toLowerCase().includes(userSearch.toLowerCase())
+          : true)
     )
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -52,7 +61,6 @@ const OrdersTable = ({
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      // Update backend
       const response = await fetch(
         `https://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders/${orderId}`,
         {
@@ -69,7 +77,6 @@ const OrdersTable = ({
         throw new Error("Failed to update status");
       }
 
-      // Update frontend state
       setOrders((prev) =>
         prev.map((order) =>
           order.id === orderId ? { ...order, status: newStatus } : order
@@ -96,13 +103,25 @@ const OrdersTable = ({
           <option value="4">4</option>
           <option value="3">3</option>
         </select>
+        <input
+          type="text"
+          placeholder="Filter by User"
+          value={userSearch}
+          onChange={(e) => setUserSearch(e.target.value)}
+        />
       </div>
+
+      {/* Count of filtered orders */}
+      <p style={{ marginTop: "10px", fontWeight: "bold" }}>
+        Total Orders: {filteredOrders.length}
+      </p>
 
       <table>
         <thead>
           <tr>
             <th>Order ID</th>
             <th>User</th>
+            <th>Phone</th>
             <th>Bill Amount</th>
             <th>Date & Time</th>
             <th>Feedback</th>
@@ -115,8 +134,9 @@ const OrdersTable = ({
             <tr key={order.id}>
               <td>{order.id}</td>
               <td>{order.user}</td>
+              <td>{order.phone || "—"}</td>
               <td>₹{order.bill_amount}</td>
-              <td>{order.created_at}</td>
+              <td>{convertToIST(order.created_at)}</td>
               <td>{order.feedback || "—"}</td>
               <td>
                 <select
@@ -125,6 +145,8 @@ const OrdersTable = ({
                   className="bg-transparent outline-none">
                   <option value="pending">pending</option>
                   <option value="delivered">delivered</option>
+                  <option value="picked up">picked up</option>
+                  <option value="cancelled">cancelled</option>
                 </select>
               </td>
               <td>

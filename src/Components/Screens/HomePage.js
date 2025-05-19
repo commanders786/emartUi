@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import UsersTable from "../UsersTable";
 import OrdersTable from "../OrdersTable";
+import ProductsTable from "../ProductsTable"; // ✅ NEW
 import "./HomePage.css";
 
 const HomePage = () => {
@@ -11,9 +12,9 @@ const HomePage = () => {
   const [joinDateSearch, setJoinDateSearch] = useState("");
   const [ordersData, setOrdersData] = useState([]);
   const [usersData, setUsersData] = useState([]);
+  const [productsData, setProductsData] = useState([]); // ✅ NEW
 
   const itemsPerPage = 10;
-
   const alertSound = useRef(null);
   const userInteracted = useRef(false);
 
@@ -64,10 +65,6 @@ const HomePage = () => {
         );
         const data = await response.json();
 
-        // Debug: Log the response
-        console.log("Orders response:", data);
-
-        // Ensure data is an array
         if (!Array.isArray(data)) {
           console.error("Orders data is not an array:", data);
           return;
@@ -99,10 +96,6 @@ const HomePage = () => {
         );
         const data = await response.json();
 
-        // Debug: Log the response
-        console.log("Users response:", data);
-
-        // Ensure data is an array
         if (!Array.isArray(data)) {
           console.error("Users data is not an array:", data);
           return;
@@ -119,12 +112,32 @@ const HomePage = () => {
       }
     };
 
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(
+          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products"
+        );
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Products data is not an array:", data);
+          return;
+        }
+
+        setProductsData(data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
     fetchOrders();
     fetchUsers();
+    fetchProducts();
 
     const interval = setInterval(() => {
       fetchOrders();
       fetchUsers();
+      fetchProducts();
     }, 10000);
 
     return () => clearInterval(interval);
@@ -148,11 +161,16 @@ const HomePage = () => {
             onClick={() => setTab("users")}>
             Users
           </div>
+          <div
+            className={`tab ${tab === "products" ? "active" : ""}`}
+            onClick={() => setTab("products")}>
+            Products
+          </div>
         </div>
       </div>
 
       <div className="content">
-        {tab === "orders" ? (
+        {tab === "orders" && (
           <OrdersTable
             search={search}
             setSearch={setSearch}
@@ -164,13 +182,23 @@ const HomePage = () => {
             ordersData={ordersData}
             setOrders={setOrdersData}
           />
-        ) : (
+        )}
+
+        {tab === "users" && (
           <UsersTable
             usersData={usersData}
             search={search}
             setSearch={setSearch}
             joinDateSearch={joinDateSearch}
             setJoinDateSearch={setJoinDateSearch}
+          />
+        )}
+
+        {tab === "products" && (
+          <ProductsTable
+            productsData={productsData}
+            search={search}
+            setSearch={setSearch}
           />
         )}
       </div>
