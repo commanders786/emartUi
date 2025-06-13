@@ -57,6 +57,7 @@ const ProductsTable = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [editedPrices, setEditedPrices] = useState({});
+  const [editedSalePrices, setEditedSalePrices] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,7 +82,7 @@ const ProductsTable = () => {
   // Initial fetch on mount
   useEffect(() => {
     fetchProducts();
-  }, []); // Empty dependency array ensures it runs only once on mount
+  }, []);
 
   // Filter products by category and search
   const getFilteredProducts = () => {
@@ -101,58 +102,111 @@ const ProductsTable = () => {
     setEditedPrices((prev) => ({ ...prev, [id]: newPrice }));
   };
 
-  // Update price via Facebook Graph API and refresh data
-  const handleUpdatePrice = async (product) => {
+  // Handle sale price input changes
+  const handleSalePriceChange = (id, newSalePrice) => {
+    setEditedSalePrices((prev) => ({ ...prev, [id]: newSalePrice }));
+  };
+
+  // Unified update for price and sale price
+  const handleUpdateProduct = async (product) => {
     setLoading(true);
     const newPrice = editedPrices[product.id];
-    const numericPrice = parseFloat(newPrice.replace(/[^\d.]/g, ""));
-    const updatedPrice = String(numericPrice * 100);
+    const newSalePrice = editedSalePrices[product.id];
+    let priceUpdated = false;
+    let salePriceUpdated = false;
 
     try {
-      console.log("Starting price update at", new Date().toISOString());
-      // Update price
-      const priceResponse = await fetch(
-        `https://graph.facebook.com/v22.0/${product.id}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization:
-              "Bearer EAAQKF56ZAbJQBO3eHvyzD8AERlnLM7hAvtAIZCcSYubLA7JqPq7iv2NGlzlgDfX1DnJ9CJl9ZANyHdiHYNztdvAjf2C4XKWXFMBCjqTagNJDV4VYV59VhzLQ76kZBjrVP3XDsa2UeqBmT9lr01zgImVXPcmeDsyf6KXOaDk61yFzMKS5BkFZBhDX4tsMfuJ4ZA5QZDZD",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ price: updatedPrice }),
+      console.log("Starting product update at", new Date().toISOString());
+
+      // Update price if changed
+      if (newPrice && newPrice !== product.price.replace(/[^\d.]/g, "")) {
+        const numericPrice = parseFloat(newPrice.replace(/[^\d.]/g, ""));
+        const updatedPrice = String(numericPrice * 100);
+        const priceResponse = await fetch(
+          `https://graph.facebook.com/v22.0/${product.id}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                "Bearer EAAQKF56ZAbJQBO8QjZB1Lmr471oHsunN8bqvophvlHGGt08TrOXrE6nKTUwwTBkfBK2ub9i1ZAZANFHsvPP0g2yyJLcZBxhMrLKH4fzv4UM5EbwzsL9PeS7FdfjSbF3Yo59oVmKoc4FMvwRcyJsc6CPyAPTuOrXlKXYhlcJzOqmK4g0Yx3BxG0Yf2AjuLEvPKBOmsLixQgCCpFiKKF9ZC6eNXDvuNEcst27oIap7CF", // Replace with your token
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ price: updatedPrice }),
+          }
+        );
+        if (!priceResponse.ok) {
+          throw new Error("Failed to update price");
         }
-      );
-
-      if (!priceResponse.ok) {
-        throw new Error("Failed to update price");
+        priceUpdated = true;
+        console.log("Price update completed at", new Date().toISOString());
       }
-      console.log("Price update completed at", new Date().toISOString());
 
-      // Fire /categorized and /products sequentially in the background
-      fetch(
-        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
-        { method: "GET" }
-      )
-        .then((response) => {
+      // Update sale price if changed
+      if (
+        newSalePrice &&
+        newSalePrice !==
+          (product.sale_price ? product.sale_price.replace(/[^\d.]/g, "") : "")
+      ) {
+        const numericSalePrice = parseFloat(
+          newSalePrice.replace(/[^\d.]/g, "")
+        );
+        const updatedSalePrice = String(numericSalePrice * 100);
+        const salePriceResponse = await fetch(
+          `https://graph.facebook.com/v22.0/${product.id}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                "Bearer EAAQKF56ZAbJQBO8QjZB1Lmr471oHsunN8bqvophvlHGGt08TrOXrE6nKTUwwTBkfBK2ub9i1ZAZANFHsvPP0g2yyJLcZBxhMrLKH4fzv4UM5EbwzsL9PeS7FdfjSbF3Yo59oVmKoc4FMvwRcyJsc6CPyAPTuOrXlKXYhlcJzOqmK4g0Yx3BxG0Yf2AjuLEvPKBOmsLixQgCCpFiKKF9ZC6eNXDvuNEcst27oIap7CF", // Replace with your token
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sale_price: updatedSalePrice }),
+          }
+        );
+        if (!salePriceResponse.ok) {
+          throw new Error("Failed to update sale price");
+        }
+        salePriceUpdated = true;
+        console.log("Sale price update completed at", new Date().toISOString());
+      }
+
+      // Refresh data if any update succeeded
+      if (priceUpdated || salePriceUpdated) {
+        await fetch(
+          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
+          { method: "GET" }
+        ).then((response) => {
           if (!response.ok) throw new Error("Failed to call /categorized");
           return fetchProducts();
-        })
-        .catch((err) => {
-          console.error("Error in /categorized or /products:", err);
         });
 
-      // Update local state for immediate feedback
-      setEditedPrices((prev) => {
-        const updated = { ...prev };
-        delete updated[product.id];
-        return updated;
-      });
-      setSuccessMsg("Price updated successfully!");
-      setTimeout(() => setSuccessMsg(""), 3000);
+        // Clear edited values
+        setEditedPrices((prev) => {
+          const updated = { ...prev };
+          delete updated[product.id];
+          return updated;
+        });
+        setEditedSalePrices((prev) => {
+          const updated = { ...prev };
+          delete updated[product.id];
+          return updated;
+        });
+
+        // Set success message based on what was updated
+        let message = "Successfully updated ";
+        if (priceUpdated && salePriceUpdated) {
+          message += "price and sale price!";
+        } else if (priceUpdated) {
+          message += "price!";
+        } else {
+          message += "sale price!";
+        }
+        setSuccessMsg(message);
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
     } catch (err) {
-      console.error("Price update error:", err);
-      setErrorMsg("Failed to update price.");
+      console.error("Product update error:", err);
+      setErrorMsg("Failed to update product pricing.");
       setTimeout(() => setErrorMsg(""), 3000);
     } finally {
       setLoading(false);
@@ -160,7 +214,7 @@ const ProductsTable = () => {
     }
   };
 
-  // Toggle stock status via API and refresh data
+  // Toggle stock status via API
   const handleToggleStock = async (product) => {
     setLoading(true);
     const newAvailability =
@@ -168,7 +222,6 @@ const ProductsTable = () => {
 
     try {
       console.log("Starting stock update at", new Date().toISOString());
-      // Update stock
       const stockResponse = await fetch(
         "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/updateStock",
         {
@@ -188,9 +241,8 @@ const ProductsTable = () => {
       }
       console.log("Stock update completed at", new Date().toISOString());
 
-      // Update local state immediately for UI feedback
       setProductsByCategory((prev) => {
-        const updated = JSON.parse(JSON.stringify(prev)); // Deep clone
+        const updated = JSON.parse(JSON.stringify(prev));
         for (const category in updated) {
           updated[category] = updated[category].map((p) =>
             p.id === product.id ? { ...p, availability: newAvailability } : p
@@ -205,7 +257,6 @@ const ProductsTable = () => {
         return updated;
       });
 
-      // Fire /categorized and /products sequentially in the background
       fetch(
         "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
         { method: "GET" }
@@ -266,6 +317,7 @@ const ProductsTable = () => {
             <th>Product ID</th>
             <th>Name</th>
             <th>Price (₹)</th>
+            <th>Sale Price (₹)</th>
             <th>Availability</th>
             <th>Update</th>
           </tr>
@@ -274,6 +326,11 @@ const ProductsTable = () => {
           {filteredProducts.map((product) => {
             const originalPrice = product.price.replace(/[^\d.]/g, "");
             const editedPrice = editedPrices[product.id] ?? originalPrice;
+            const originalSalePrice = product.sale_price
+              ? product.sale_price.replace(/[^\d.]/g, "")
+              : "";
+            const editedSalePrice =
+              editedSalePrices[product.id] ?? originalSalePrice;
 
             return (
               <tr key={product.id}>
@@ -287,6 +344,17 @@ const ProductsTable = () => {
                       handlePriceChange(product.id, e.target.value)
                     }
                     style={{ width: "80px" }}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={editedSalePrice}
+                    onChange={(e) =>
+                      handleSalePriceChange(product.id, e.target.value)
+                    }
+                    style={{ width: "80px" }}
+                    placeholder="No sale price"
                   />
                 </td>
                 <td>
@@ -312,9 +380,10 @@ const ProductsTable = () => {
                   </button>
                 </td>
                 <td>
-                  {editedPrice !== originalPrice && (
+                  {(editedPrice !== originalPrice ||
+                    editedSalePrice !== originalSalePrice) && (
                     <button
-                      onClick={() => handleUpdatePrice(product)}
+                      onClick={() => handleUpdateProduct(product)}
                       disabled={loading}
                       style={{
                         backgroundColor: "#007bff",
