@@ -138,7 +138,7 @@ const HomePage = () => {
       fetchOrders();
       fetchUsers();
       // fetchProducts();
-    }, 600000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [ordersData.length]);
