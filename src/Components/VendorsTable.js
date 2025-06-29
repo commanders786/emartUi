@@ -8,7 +8,9 @@ const VendorsTable = ({ search, setSearch }) => {
   const [vendorProducts, setVendorProducts] = useState([]);
   const [vendorAccounts, setVendorAccounts] = useState([]);
   const [subTab, setSubTab] = useState("products");
-  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  const baseUrl =
+    process.env.REACT_APP_API_BASE_URL ||
+    "https://python-whatsapp-bot-main-production-3c9c.up.railway.app";
   const navigate = useNavigate();
 
   // Fetch vendors

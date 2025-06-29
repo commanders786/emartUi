@@ -8,7 +8,9 @@ import { useNavigate } from "react-router-dom";
 const LoginSignup = () => {
   const [action, setAction] = useState("Login");
   const navigate = useNavigate();
-  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  const baseUrl =
+    process.env.REACT_APP_API_BASE_URL ||
+    "https://python-whatsapp-bot-main-production-3c9c.up.railway.app";
   console.log("API Base URL:", baseUrl); // Debug
 
   const handleLogin = async () => {

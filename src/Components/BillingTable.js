@@ -19,7 +19,9 @@ const BillingTable = ({ search, setSearch }) => {
   const [specialNotes, setSpecialNotes] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState(""); // State for phone number validation error
-  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  const baseUrl =
+    process.env.REACT_APP_API_BASE_URL ||
+    "https://python-whatsapp-bot-main-production-3c9c.up.railway.app";
   const productsUrl =
     "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products";
   const navigate = useNavigate();
