@@ -61,6 +61,7 @@ const ProductsTable = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
   // Fetch products from API
   const fetchProducts = async () => {
@@ -128,7 +129,7 @@ const ProductsTable = () => {
             method: "POST",
             headers: {
               Authorization:
-                "Bearer EAAQKF56ZAbJQBO8QjZB1Lmr471oHsunN8bqvophvlHGGt08TrOXrE6nKTUwwTBkfBK2ub9i1ZAZANFHsvPP0g2yyJLcZBxhMrLKH4fzv4UM5EbwzsL9PeS7FdfjSbF3Yo59oVmKoc4FMvwRcyJsc6CPyAPTuOrXlKXYhlcJzOqmK4g0Yx3BxG0Yf2AjuLEvPKBOmsLixQgCCpFiKKF9ZC6eNXDvuNEcst27oIap7CF", // Replace with your token
+                "Bearer EAAQKF56ZAbJQBO3eHvyzD8AERlnLM7hAvtAIZCcSYubLA7JqPq7iv2NGlzlgDfX1DnJ9CJl9ZANyHdiHYNztdvAjf2C4XKWXFMBCjqTagNJDV4VYV59VhzLQ76kZBjrVP3XDsa2UeqBmT9lr01zgImVXPcmeDsyf6KXOaDk61yFzMKS5BkFZBhDX4tsMfuJ4ZA5QZDZD", // Replace with your token
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ price: updatedPrice }),
@@ -157,7 +158,7 @@ const ProductsTable = () => {
             method: "POST",
             headers: {
               Authorization:
-                "Bearer EAAQKF56ZAbJQBO8QjZB1Lmr471oHsunN8bqvophvlHGGt08TrOXrE6nKTUwwTBkfBK2ub9i1ZAZANFHsvPP0g2yyJLcZBxhMrLKH4fzv4UM5EbwzsL9PeS7FdfjSbF3Yo59oVmKoc4FMvwRcyJsc6CPyAPTuOrXlKXYhlcJzOqmK4g0Yx3BxG0Yf2AjuLEvPKBOmsLixQgCCpFiKKF9ZC6eNXDvuNEcst27oIap7CF", // Replace with your token
+                "Bearer EAAQKF56ZAbJQBO3eHvyzD8AERlnLM7hAvtAIZCcSYubLA7JqPq7iv2NGlzlgDfX1DnJ9CJl9ZANyHdiHYNztdvAjf2C4XKWXFMBCjqTagNJDV4VYV59VhzLQ76kZBjrVP3XDsa2UeqBmT9lr01zgImVXPcmeDsyf6KXOaDk61yFzMKS5BkFZBhDX4tsMfuJ4ZA5QZDZD", // Replace with your token
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ sale_price: updatedSalePrice }),
@@ -172,13 +173,12 @@ const ProductsTable = () => {
 
       // Refresh data if any update succeeded
       if (priceUpdated || salePriceUpdated) {
-        await fetch(
-          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
-          { method: "GET" }
-        ).then((response) => {
-          if (!response.ok) throw new Error("Failed to call /categorized");
-          return fetchProducts();
-        });
+        await fetch(`${baseUrl}/products/categorized`, { method: "GET" }).then(
+          (response) => {
+            if (!response.ok) throw new Error("Failed to call /categorized");
+            return fetchProducts();
+          }
+        );
 
         // Clear edited values
         setEditedPrices((prev) => {
@@ -222,19 +222,16 @@ const ProductsTable = () => {
 
     try {
       console.log("Starting stock update at", new Date().toISOString());
-      const stockResponse = await fetch(
-        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/updateStock",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: product.id,
-            availability: newAvailability,
-          }),
-        }
-      );
+      const stockResponse = await fetch(`${baseUrl}/updateStock`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: product.id,
+          availability: newAvailability,
+        }),
+      });
 
       if (!stockResponse.ok) {
         throw new Error("Failed to update stock");
@@ -257,10 +254,7 @@ const ProductsTable = () => {
         return updated;
       });
 
-      fetch(
-        "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products/categorized",
-        { method: "GET" }
-      )
+      fetch(`${baseUrl}/products/categorized`, { method: "GET" })
         .then((response) => {
           if (!response.ok) throw new Error("Failed to call /categorized");
           console.log("Categorized completed at", new Date().toISOString());

@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import UsersTable from "../UsersTable";
 import OrdersTable from "../OrdersTable";
-import ProductsTable from "../ProductsTable"; // ✅ NEW
+import ProductsTable from "../ProductsTable";
+import VendorsTable from "../VendorsTable";
+import BillingTable from "../BillingTable";
 import "./HomePage.css";
 
 const HomePage = () => {
@@ -12,11 +15,14 @@ const HomePage = () => {
   const [joinDateSearch, setJoinDateSearch] = useState("");
   const [ordersData, setOrdersData] = useState([]);
   const [usersData, setUsersData] = useState([]);
-  const [productsData, setProductsData] = useState([]); // ✅ NEW
-
+  const [productsData, setProductsData] = useState([]);
+  const [vendorsData, setVendorsData] = useState([]);
+  const [billingData, setBillingData] = useState([]);
   const itemsPerPage = 10;
   const alertSound = useRef(null);
   const userInteracted = useRef(false);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleUserInteraction = () => {
@@ -58,11 +64,29 @@ const HomePage = () => {
   };
 
   useEffect(() => {
+    if (!process.env.REACT_APP_API_BASE_URL) {
+      console.warn(
+        "⚠️ REACT_APP_API_BASE_URL not defined in .env, using fallback:",
+        baseUrl
+      );
+    }
+
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+      console.error("No auth token found. Redirecting to login.");
+      navigate("/");
+      return;
+    }
+
     const fetchOrders = async () => {
       try {
-        const response = await fetch(
-          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders"
-        );
+        const response = await fetch(`${baseUrl}/orders`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
 
         if (!Array.isArray(data)) {
@@ -85,15 +109,18 @@ const HomePage = () => {
           return combined;
         });
       } catch (error) {
-        console.error("Error fetching orders:", error);
+        console.error("Error fetching orders:", error.message);
       }
     };
 
     const fetchUsers = async () => {
       try {
-        const response = await fetch(
-          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/users"
-        );
+        const response = await fetch(`${baseUrl}/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
 
         if (!Array.isArray(data)) {
@@ -108,15 +135,18 @@ const HomePage = () => {
           return [...newUsers, ...prev];
         });
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching users:", error.message);
       }
     };
 
     const fetchProducts = async () => {
       try {
-        const response = await fetch(
-          "https://python-whatsapp-bot-main-production-3c9c.up.railway.app/products"
-        );
+        const response = await fetch(`${baseUrl}/products`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
 
         if (!Array.isArray(data)) {
@@ -125,23 +155,70 @@ const HomePage = () => {
         }
 
         setProductsData(data);
+        console.log("Products data:", data);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error fetching products:", error.message);
+      }
+    };
+
+    const fetchVendors = async () => {
+      try {
+        const response = await fetch(`${baseUrl}/vendors`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Vendors data is not an array:", data);
+          return;
+        }
+
+        setVendorsData(data);
+      } catch (error) {
+        console.error("Error fetching vendors:", error.message);
+      }
+    };
+
+    const fetchBilling = async () => {
+      try {
+        const response = await fetch(`${baseUrl}/billing`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Billing data is not an array:", data);
+          return;
+        }
+
+        setBillingData(data);
+      } catch (error) {
+        console.error("Error fetching billing:", error.message);
       }
     };
 
     fetchOrders();
     fetchUsers();
     fetchProducts();
+    fetchVendors();
+    fetchBilling();
 
     const interval = setInterval(() => {
       fetchOrders();
       fetchUsers();
-      // fetchProducts();
+      fetchProducts();
+      fetchVendors();
+      fetchBilling();
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [ordersData.length]);
+  }, [ordersData.length, baseUrl, navigate]);
 
   return (
     <div className="homepage-container">
@@ -165,6 +242,16 @@ const HomePage = () => {
             className={`tab ${tab === "products" ? "active" : ""}`}
             onClick={() => setTab("products")}>
             Products
+          </div>
+          <div
+            className={`tab ${tab === "vendors" ? "active" : ""}`}
+            onClick={() => setTab("vendors")}>
+            Vendors
+          </div>
+          <div
+            className={`tab ${tab === "billing" ? "active" : ""}`}
+            onClick={() => setTab("billing")}>
+            Billing
           </div>
         </div>
       </div>
@@ -197,6 +284,22 @@ const HomePage = () => {
         {tab === "products" && (
           <ProductsTable
             productsData={productsData}
+            search={search}
+            setSearch={setSearch}
+          />
+        )}
+
+        {tab === "vendors" && (
+          <VendorsTable
+            vendorsData={vendorsData}
+            search={search}
+            setSearch={setSearch}
+          />
+        )}
+
+        {tab === "billing" && (
+          <BillingTable
+            billingData={billingData}
             search={search}
             setSearch={setSearch}
           />

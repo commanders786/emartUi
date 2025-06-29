@@ -17,6 +17,7 @@ const OrdersTable = ({
   const [selectedReceipt, setSelectedReceipt] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [userSearch, setUserSearch] = useState("");
+  const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
   const convertToIST = (utcDate) => {
     const date = new Date(utcDate);
@@ -61,17 +62,14 @@ const OrdersTable = ({
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      const response = await fetch(
-        `https://python-whatsapp-bot-main-production-3c9c.up.railway.app/orders/${orderId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      const response = await fetch(`${baseUrl}/orders/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to update status");
