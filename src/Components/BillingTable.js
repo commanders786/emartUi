@@ -13,12 +13,19 @@ const BillingTable = ({ search, setSearch }) => {
   const [quantity, setQuantity] = useState(1);
   const [receiptPreview, setReceiptPreview] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false); // State for error modal
-  const [errorMessage, setErrorMessage] = useState(""); // State for error message
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [mapLink, setMapLink] = useState("");
   const [specialNotes, setSpecialNotes] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneError, setPhoneError] = useState(""); // State for phone number validation error
+  const [phoneError, setPhoneError] = useState("");
+  const [isOrderItemsModalOpen, setIsOrderItemsModalOpen] = useState(false);
+  const [orderItems, setOrderItems] = useState([]);
+  const [newProductSearch, setNewProductSearch] = useState("");
+  const [newProduct, setNewProduct] = useState(null);
+  const [newQuantity, setNewQuantity] = useState(1);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const baseUrl =
     process.env.REACT_APP_API_BASE_URL ||
     "https://python-whatsapp-bot-main-production-3c9c.up.railway.app";
@@ -31,7 +38,8 @@ const BillingTable = ({ search, setSearch }) => {
     const token = localStorage.getItem("authToken");
 
     if (!token) {
-      console.error("No auth token found. Redirecting to login.");
+      setErrorMessage("No auth token found. Please log in.");
+      setIsErrorModalOpen(true);
       navigate("/");
       return;
     }
@@ -54,6 +62,8 @@ const BillingTable = ({ search, setSearch }) => {
         setBillingData(data);
       } catch (error) {
         console.error("Error fetching billing:", error.message);
+        setErrorMessage("Failed to fetch billing records.");
+        setIsErrorModalOpen(true);
       }
     };
 
@@ -87,6 +97,8 @@ const BillingTable = ({ search, setSearch }) => {
         setSelectedCategory("");
       } catch (error) {
         console.error("Error fetching products:", error.message);
+        setErrorMessage("Failed to fetch products.");
+        setIsErrorModalOpen(true);
       }
     };
 
@@ -102,7 +114,7 @@ const BillingTable = ({ search, setSearch }) => {
     }
   }, [phoneNumber]);
 
-  // Generate receipt preview when selectedItems, mapLink, specialNotes, or phoneNumber change
+  // Generate receipt preview
   useEffect(() => {
     if (selectedItems.length === 0) {
       setReceiptPreview("");
@@ -112,13 +124,14 @@ const BillingTable = ({ search, setSearch }) => {
     const orderId = `ORDER-${Date.now()}`;
     const deliveryCharge = 30;
     const grandTotalWithDelivery =
-      selectedItems.reduce((sum, item) => sum + item.total, 0) + deliveryCharge;
-    const formattedPhoneNumber = `91${phoneNumber}`; // Prepend "91" for receipt
+      selectedItems.reduce((sum, item) => sum + (item.total || 0), 0) +
+      deliveryCharge;
+    const formattedPhoneNumber = `91${phoneNumber}`;
 
     const itemLines = selectedItems
       .map((item, index) => {
-        const unitPrice = item.price.toFixed(2);
-        const totalPrice = item.total.toFixed(2);
+        const unitPrice = item.price ? item.price.toFixed(2) : "0.00";
+        const totalPrice = item.total ? item.total.toFixed(2) : "0.00";
         return `${(index + 1).toString().padStart(2)}  ${item.name.padEnd(
           22,
           " "
@@ -136,7 +149,7 @@ No  Item                   Qty  Unit  Total
 ${itemLines}
 
 🛵 Delivery Charge: ₹${deliveryCharge}
-🧾 Grand Total: ₹${grandTotalWithDelivery}
+🧾 Grand Total: ₹${grandTotalWithDelivery.toFixed(2)}
 📍 *Location Links:*
 🔗 [Google Maps](${mapLink})
 Phone number: ${formattedPhoneNumber}
@@ -147,19 +160,34 @@ Special Notes: ${specialNotes}`;
 
   // Add selected product to the billing list
   const handleAddItem = () => {
-    if (!selectedProduct || quantity < 1) return;
+    if (!selectedProduct || quantity < 1) {
+      setErrorMessage("Please select a product and enter a valid quantity.");
+      setIsErrorModalOpen(true);
+      return;
+    }
 
-    const price = selectedProduct.sale_price
-      ? parseFloat(selectedProduct.sale_price.replace("₹", "").replace(",", ""))
-      : parseFloat(selectedProduct.price.replace("₹", "").replace(",", ""));
+    const priceString = selectedProduct.sale_price || selectedProduct.price;
+    if (!priceString) {
+      setErrorMessage("Selected product has no valid price.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const price = parseFloat(priceString.replace("₹", "").replace(",", ""));
+    if (isNaN(price)) {
+      setErrorMessage("Invalid product price.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
     const itemTotal = price * quantity;
 
     setSelectedItems([
       ...selectedItems,
       {
         product_id: selectedProduct.id,
-        name: selectedProduct.name,
-        category: selectedProduct.category,
+        name: selectedProduct.name || "Unknown Product",
+        category: selectedProduct.category || "Unknown",
         quantity,
         price,
         total: itemTotal,
@@ -186,8 +214,28 @@ Special Notes: ${specialNotes}`;
     setIsErrorModalOpen(!isErrorModalOpen);
   };
 
-  // Save bill to the backend
-  const handleSaveBill = async () => {
+  // Open/close order items modal
+  const toggleOrderItemsModal = () => {
+    setIsOrderItemsModalOpen(!isOrderItemsModalOpen);
+    if (!isOrderItemsModalOpen) {
+      setNewProductSearch("");
+      setNewProduct(null);
+      setNewQuantity(1);
+    }
+  };
+
+  // Open/close confirm modal
+  const toggleConfirmModal = () => {
+    setIsConfirmModalOpen(!isConfirmModalOpen);
+  };
+
+  // Open/close success modal
+  const toggleSuccessModal = () => {
+    setIsSuccessModalOpen(!isSuccessModalOpen);
+  };
+
+  // Fetch order items for a specific order
+  const handleViewOrderItems = async (orderId) => {
     const token = localStorage.getItem("authToken");
     if (!token) {
       setErrorMessage("No auth token found. Please log in.");
@@ -195,6 +243,219 @@ Special Notes: ${specialNotes}`;
       return;
     }
 
+    try {
+      const response = await fetch(
+        `${baseUrl}/order-items/all?order_id=${orderId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch order items: HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.status === "success" && Array.isArray(result.data)) {
+        const enrichedItems = result.data.map((item) => {
+          const product = products.find((p) => p.id === item.product_id);
+          return {
+            ...item,
+            name: product ? product.name : item.product_id,
+          };
+        });
+        setOrderItems(enrichedItems);
+        setIsOrderItemsModalOpen(true);
+      } else {
+        throw new Error("Invalid order items data format");
+      }
+    } catch (error) {
+      console.error("Error fetching order items:", error.message);
+      setErrorMessage(error.message);
+      setIsErrorModalOpen(true);
+    }
+  };
+
+  // Update quantity of an existing order item
+  const handleUpdateQuantity = async (orderId, productId, newQty) => {
+    if (newQty < 1) {
+      setErrorMessage("Quantity must be at least 1.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setErrorMessage("No auth token found. Please log in.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const product = products.find((p) => p.id === productId);
+    const vendorPrice = product
+      ? product.sale_price
+        ? parseFloat(product.sale_price.replace("₹", "").replace(",", ""))
+        : parseFloat(product.price.replace("₹", "").replace(",", ""))
+      : 0;
+
+    if (isNaN(vendorPrice)) {
+      setErrorMessage("Invalid price for the selected product.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const updateData = {
+      order_id: orderId,
+      items: [
+        {
+          product_id: productId,
+          action: "update",
+          qty: newQty,
+          vendor_price: vendorPrice,
+        },
+      ],
+    };
+
+    try {
+      const response = await fetch(`${baseUrl}/update-order-items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+            `Failed to update order item: HTTP ${response.status}`
+        );
+      }
+
+      await handleViewOrderItems(orderId);
+    } catch (error) {
+      console.error("Error updating order item:", error.message);
+      setErrorMessage(error.message);
+      setIsErrorModalOpen(true);
+    }
+  };
+
+  // Delete an order item
+  const handleDeleteItem = async (orderId, productId) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setErrorMessage("No auth token found. Please log in.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const deleteData = {
+      order_id: orderId,
+      items: [
+        {
+          product_id: productId,
+          action: "delete",
+        },
+      ],
+    };
+
+    try {
+      const response = await fetch(`${baseUrl}/update-order-items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(deleteData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+            `Failed to delete order item: HTTP ${response.status}`
+        );
+      }
+
+      await handleViewOrderItems(orderId);
+    } catch (error) {
+      console.error("Error deleting order item:", error.message);
+      setErrorMessage(error.message);
+      setIsErrorModalOpen(true);
+    }
+  };
+
+  // Add a new product to the order
+  const handleAddNewItem = async (orderId) => {
+    if (!newProduct || newQuantity < 1) {
+      setErrorMessage("Please select a product and enter a valid quantity.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setErrorMessage("No auth token found. Please log in.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const vendorPrice = newProduct.sale_price
+      ? parseFloat(newProduct.sale_price.replace("₹", "").replace(",", ""))
+      : parseFloat(newProduct.price.replace("₹", "").replace(",", ""));
+
+    if (isNaN(vendorPrice)) {
+      setErrorMessage("Invalid price for the selected product.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    const insertData = {
+      order_id: orderId,
+      items: [
+        {
+          product_id: newProduct.id,
+          action: "insert",
+          qty: newQuantity,
+          vendor_price: vendorPrice,
+        },
+      ],
+    };
+
+    try {
+      const response = await fetch(`${baseUrl}/update-order-items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(insertData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to add order item: HTTP ${response.status}`
+        );
+      }
+
+      await handleViewOrderItems(orderId);
+      setNewProduct(null);
+      setNewProductSearch("");
+      setNewQuantity(1);
+    } catch (error) {
+      console.error("Error adding order item:", error.message);
+      setErrorMessage(error.message);
+      setIsErrorModalOpen(true);
+    }
+  };
+
+  // Open confirm modal before saving bill
+  const handleConfirmSaveBill = () => {
     if (selectedItems.length === 0) {
       setErrorMessage("No items to save.");
       setIsErrorModalOpen(true);
@@ -207,17 +468,42 @@ Special Notes: ${specialNotes}`;
       return;
     }
 
+    setIsConfirmModalOpen(true);
+  };
+
+  // Save bill to the backend
+  const handleSaveBill = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setErrorMessage("No auth token found. Please log in.");
+      setIsErrorModalOpen(true);
+      return;
+    }
+
+    // Validate all items have valid total
+    const invalidItems = selectedItems.filter(
+      (item) => !item.total || isNaN(item.total)
+    );
+    if (invalidItems.length > 0) {
+      setErrorMessage(
+        "Some items have invalid totals. Please review your selection."
+      );
+      setIsErrorModalOpen(true);
+      return;
+    }
+
     const orderId = `ORDER-${Date.now()}`;
     const deliveryCharge = 30;
     const grandTotalWithDelivery =
-      selectedItems.reduce((sum, item) => sum + item.total, 0) + deliveryCharge;
-    const formattedPhoneNumber = `91${phoneNumber}`; // Prepend "91" for API
+      selectedItems.reduce((sum, item) => sum + (item.total || 0), 0) +
+      deliveryCharge;
+    const formattedPhoneNumber = `91${phoneNumber}`;
     const feedback = "5";
 
     const itemLines = selectedItems
       .map((item, index) => {
-        const unitPrice = item.price.toFixed(2);
-        const totalPrice = item.total.toFixed(2);
+        const unitPrice = item.price ? item.price.toFixed(2) : "0.00";
+        const totalPrice = item.total ? item.total.toFixed(2) : "0.00";
         return `${(index + 1).toString().padStart(2)}  ${item.name.padEnd(
           22,
           " "
@@ -235,18 +521,18 @@ No  Item                   Qty  Unit  Total
 ${itemLines}
 
 🛵 Delivery Charge: ₹${deliveryCharge}
-🧾 Grand Total: ₹${grandTotalWithDelivery}
+🧾 Grand Total: ₹${grandTotalWithDelivery.toFixed(2)}
 📍 *Location Links:*
 🔗 [Google Maps](${mapLink})
 Phone number: ${formattedPhoneNumber}
 Special Notes: ${specialNotes}`;
 
-    // First API call: Create order
     const orderData = {
-      userid: formattedPhoneNumber, // Use phoneNumber with "91" prepended
+      userid: formattedPhoneNumber,
       bill_amount: grandTotalWithDelivery,
       feedback: feedback,
       receipt: receipt,
+      is_offline: true,
     };
 
     try {
@@ -269,7 +555,7 @@ Special Notes: ${specialNotes}`;
       const orderResult = await orderResponse.json();
       const orderIdFromResponse = orderResult.order_id;
 
-      // Second API call: Update order items
+      // Update order items immediately after order creation
       const orderItemsData = {
         order_id: orderIdFromResponse,
         items: selectedItems.map((item) => ({
@@ -291,23 +577,33 @@ Special Notes: ${specialNotes}`;
       if (!itemsResponse.ok) {
         const errorData = await itemsResponse.json().catch(() => ({}));
         throw new Error(
-          errorData.message ||
+          errorData.error ||
             `Failed to update order items: HTTP ${itemsResponse.status}`
         );
       }
 
-      // Update billing data and reset UI
+      const itemsResult = await itemsResponse.json();
+      if (itemsResult.message !== 200) {
+        throw new Error("Failed to update order items: Invalid response");
+      }
+
       setBillingData([
         ...billingData,
         { ...orderData, id: orderIdFromResponse },
       ]);
       setSelectedItems([]);
       setReceiptPreview("");
+      setPhoneNumber("");
+      setMapLink("");
+      setSpecialNotes("");
       setIsModalOpen(false);
+      setIsConfirmModalOpen(false);
+      setIsSuccessModalOpen(true);
     } catch (error) {
       console.error("Error saving bill:", error.message);
       setErrorMessage(error.message);
       setIsErrorModalOpen(true);
+      setIsConfirmModalOpen(false);
     }
   };
 
@@ -317,6 +613,13 @@ Special Notes: ${specialNotes}`;
       product.availability === "in stock" &&
       (!selectedCategory || product.category === selectedCategory) &&
       product.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  // Filter products for adding new items in order items modal
+  const filteredNewProducts = products.filter(
+    (product) =>
+      product.availability === "in stock" &&
+      product.name.toLowerCase().includes(newProductSearch.toLowerCase())
   );
 
   return (
@@ -378,7 +681,6 @@ Special Notes: ${specialNotes}`;
             </div>
           )}
         </div>
-        {/* Selected Items Table */}
         {selectedItems.length > 0 && (
           <div className="selected-items">
             <h3>Selected Items</h3>
@@ -399,8 +701,8 @@ Special Notes: ${specialNotes}`;
                     <td>{item.name}</td>
                     <td>{item.category}</td>
                     <td>{item.quantity}</td>
-                    <td>₹{item.price.toFixed(2)}</td>
-                    <td>₹{item.total.toFixed(2)}</td>
+                    <td>₹{item.price ? item.price.toFixed(2) : "0.00"}</td>
+                    <td>₹{item.total ? item.total.toFixed(2) : "0.00"}</td>
                     <td>
                       <button
                         onClick={() => handleRemoveItem(index)}
@@ -416,11 +718,13 @@ Special Notes: ${specialNotes}`;
               <strong>
                 Grand Total: ₹
                 {(
-                  selectedItems.reduce((sum, item) => sum + item.total, 0) + 30
+                  selectedItems.reduce(
+                    (sum, item) => sum + (item.total || 0),
+                    0
+                  ) + 30
                 ).toFixed(2)}
               </strong>
             </div>
-            {/* Input Fields for Phone Number, Map Link, and Special Notes */}
             <div className="additional-inputs">
               <div>
                 <label>Phone Number:</label>
@@ -456,7 +760,6 @@ Special Notes: ${specialNotes}`;
                 />
               </div>
             </div>
-            {/* Preview and Save Buttons */}
             <div className="action-buttons">
               {receiptPreview && (
                 <button onClick={toggleModal} className="action-button preview">
@@ -464,10 +767,9 @@ Special Notes: ${specialNotes}`;
                 </button>
               )}
               <button
-                onClick={handleSaveBill}
+                onClick={handleConfirmSaveBill}
                 className="action-button save"
-                disabled={!phoneNumber} // Disable button if phoneNumber is empty
-              >
+                disabled={!phoneNumber}>
                 Save Bill
               </button>
             </div>
@@ -508,6 +810,167 @@ Special Notes: ${specialNotes}`;
         </div>
       )}
 
+      {/* Confirm Save Bill Modal */}
+      {isConfirmModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Confirm Save Bill</h3>
+              <button
+                onClick={toggleConfirmModal}
+                className="modal-close-button">
+                ×
+              </button>
+            </div>
+            <p>Are you sure you want to save this bill?</p>
+            <div className="modal-actions">
+              <button onClick={toggleConfirmModal} className="action-button">
+                Cancel
+              </button>
+              <button onClick={handleSaveBill} className="action-button save">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {isSuccessModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Success</h3>
+              <button
+                onClick={toggleSuccessModal}
+                className="modal-close-button">
+                ×
+              </button>
+            </div>
+            <p>Bill saved successfully!</p>
+            <button onClick={toggleSuccessModal} className="action-button">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Order Items Modal */}
+      {isOrderItemsModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Order Items</h3>
+              <button
+                onClick={toggleOrderItemsModal}
+                className="modal-close-button">
+                ×
+              </button>
+            </div>
+            <div className="add-item-section">
+              <h4>Add New Item</h4>
+              <input
+                type="text"
+                placeholder="Search products to add..."
+                value={newProductSearch}
+                onChange={(e) => setNewProductSearch(e.target.value)}
+                className="search-input"
+              />
+              {newProductSearch && filteredNewProducts.length > 0 && (
+                <ul className="product-dropdown">
+                  {filteredNewProducts.map((product) => (
+                    <li
+                      key={product.id}
+                      onClick={() => {
+                        setNewProduct(product);
+                        setNewProductSearch("");
+                      }}
+                      className="product-item">
+                      {product.name} ({product.category}) -{" "}
+                      {product.sale_price || product.price}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {newProduct && (
+                <div className="selected-product">
+                  <p>
+                    Selected: {newProduct.name} ({newProduct.category})
+                  </p>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newQuantity}
+                    onChange={(e) =>
+                      setNewQuantity(parseInt(e.target.value) || 1)
+                    }
+                    className="quantity-input"
+                    placeholder="Enter quantity"
+                  />
+                  <button
+                    onClick={() => handleAddNewItem(orderItems[0]?.order_id)}
+                    className="action-button"
+                    disabled={!orderItems[0]?.order_id}>
+                    Add Item
+                  </button>
+                </div>
+              )}
+            </div>
+            {orderItems.length > 0 ? (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderItems.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.order_id}</td>
+                      <td>{item.name}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleUpdateQuantity(
+                              item.order_id,
+                              item.product_id,
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="quantity-input"
+                        />
+                      </td>
+                      <td>₹{item.total ? item.total.toFixed(2) : "0.00"}</td>
+                      <td>
+                        <button
+                          onClick={() =>
+                            handleDeleteItem(item.order_id, item.product_id)
+                          }
+                          className="action-button remove">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No items in this order.</p>
+            )}
+            <button onClick={toggleOrderItemsModal} className="action-button">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Existing Billing Records */}
       <div className="billing-records">
         <div className="table-header">
@@ -524,7 +987,6 @@ Special Notes: ${specialNotes}`;
           <thead>
             <tr>
               <th>Billing ID</th>
-              {/* <th>Order ID</th> */}
               <th>Amount</th>
               <th>Status</th>
               <th>Offline</th>
@@ -535,18 +997,25 @@ Special Notes: ${specialNotes}`;
             {billingData.length > 0 ? (
               billingData
                 .filter((bill) =>
-                  bill.id?.toString().includes(search.toLowerCase())
+                  bill.id
+                    ?.toString()
+                    .toLowerCase()
+                    .includes(search.toLowerCase())
                 )
                 .map((bill) => (
                   <tr key={bill.id}>
                     <td>{bill.id}</td>
-                    {/* <td>{bill.order_id}</td> */}
-                    <td>₹{bill.bill_amount.toFixed(2)}</td>
-                    <td>{bill.status}</td>
-                    <td>{bill.is_offline}</td>
                     <td>
-                      <button className="action-button">View</button>
-                      <button className="action-button">Refund</button>
+                      ₹{bill.bill_amount ? bill.bill_amount.toFixed(2) : "0.00"}
+                    </td>
+                    <td>{bill.status || "N/A"}</td>
+                    <td>{bill.is_offline ? "Yes" : "No"}</td>
+                    <td>
+                      <button
+                        onClick={() => handleViewOrderItems(bill.id)}
+                        className="action-button">
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))

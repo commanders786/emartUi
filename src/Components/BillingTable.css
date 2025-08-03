@@ -132,6 +132,22 @@
   background-color: #218838;
 }
 
+.action-button.preview {
+  background-color: #17a2b8;
+}
+
+.action-button.preview:hover {
+  background-color: #138496;
+}
+
+.action-button.cancel {
+  background-color: #e74c3c;
+}
+
+.action-button.cancel:hover {
+  background-color: #c0392b;
+}
+
 .grand-total {
   text-align: right;
   font-size: 18px;
@@ -145,6 +161,7 @@
   border-radius: 4px;
   background-color: #f9f9f9;
 }
+
 .receipt-text {
   font-family: monospace;
   white-space: pre;
@@ -172,7 +189,84 @@
   flex-direction: column;
   gap: 15px;
 }
+
 .additional-inputs div {
   display: flex;
   flex-direction: column;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #333;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #28a745; /* Match save button color */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

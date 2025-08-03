@@ -17,7 +17,7 @@ const HomePage = () => {
   const [usersData, setUsersData] = useState([]);
   const [productsData, setProductsData] = useState([]);
   const [vendorsData, setVendorsData] = useState([]);
-  const [billingData, setBillingData] = useState([]);
+
   const itemsPerPage = 10;
   const alertSound = useRef(null);
   const userInteracted = useRef(false);
@@ -184,49 +184,42 @@ const HomePage = () => {
       }
     };
 
-    const fetchBilling = async () => {
-      try {
-        const response = await fetch(`${baseUrl}/billing`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          console.error("Billing data is not an array:", data);
-          return;
-        }
-
-        setBillingData(data);
-      } catch (error) {
-        console.error("Error fetching billing:", error.message);
-      }
-    };
-
+    // Initial data fetch
     fetchOrders();
     fetchUsers();
     fetchProducts();
     fetchVendors();
-    fetchBilling();
 
-    const interval = setInterval(() => {
-      fetchOrders();
-      fetchUsers();
-      fetchProducts();
-      fetchVendors();
-      fetchBilling();
-    }, 60000);
+    // Set up SSE
+    const eventSource = new EventSource(`${baseUrl}/events`);
 
-    return () => clearInterval(interval);
-  }, [ordersData.length, baseUrl, navigate]);
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("SSE Message:", data);
+        if (data.message === "New order created") {
+          fetchOrders();
+        }
+      } catch (error) {
+        console.error("Error parsing SSE message:", error.message);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("SSE error:", error);
+    };
+
+    // Cleanup SSE connection
+    return () => {
+      eventSource.close();
+    };
+  }, [baseUrl, navigate, ordersData.length]);
 
   return (
     <div className="homepage-container">
       <div className="topbar">
         <div className="logo">
-          അങ്ങാടി <div className="caption">Market is in your chat</div>
+          അങ്ങാടി <div className="caption">Market in your chat</div>
         </div>
 
         <div className="tabs">
@@ -300,11 +293,7 @@ const HomePage = () => {
         )}
 
         {tab === "billing" && (
-          <BillingTable
-            billingData={billingData}
-            search={search}
-            setSearch={setSearch}
-          />
+          <BillingTable search={search} setSearch={setSearch} />
         )}
       </div>
     </div>
