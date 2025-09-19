@@ -187,6 +187,9 @@ const VendorsTable = ({ search, setSearch }) => {
 
     const fetchVendorOrders = async () => {
       try {
+        const token = localStorage.getItem("authToken");
+
+        // Fetch paid orders
         const paidResponse = await fetch(`${baseUrl}/productsNew`, {
           method: "POST",
           headers: {
@@ -213,6 +216,7 @@ const VendorsTable = ({ search, setSearch }) => {
           setPaidCommission(0);
         }
 
+        // Fetch unpaid orders
         const unpaidResponse = await fetch(`${baseUrl}/productsNew`, {
           method: "POST",
           headers: {
@@ -229,6 +233,7 @@ const VendorsTable = ({ search, setSearch }) => {
         const unpaidText = await unpaidResponse.text();
         const unpaidData = JSON.parse(sanitizeJSON(unpaidText));
 
+        // Check if response contains margin and percentage fields
         if (unpaidData.margin && unpaidData.percentage) {
           setIsSplitResponse(true);
           setUnpaidMarginOrders(
@@ -259,7 +264,7 @@ const VendorsTable = ({ search, setSearch }) => {
           setUnpaidPercentageOrders(
             (unpaidData.orders || []).map((order) => ({
               order_id: order.order_id,
-              bill_amount: order.bill_amount || 0,
+              bill_amount: order.sold_amount || 0,
               vendor_price: "N/A",
             }))
           );

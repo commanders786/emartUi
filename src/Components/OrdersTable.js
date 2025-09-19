@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import "./Screens/HomePage";
+import React, { useState, useEffect } from "react";
 import "./OrderTable.css";
 
 const OrdersTable = ({
@@ -12,34 +11,88 @@ const OrdersTable = ({
   itemsPerPage,
   ordersData,
   setOrders,
+  totalPages,
+  setTotalPages,
+  totalOrders,
+  setTotalOrders,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
-  const [userSearch, setUserSearch] = useState("");
-  const baseUrl = process.env.REACT_APP_API_BASE_URL;
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [totalSales, setTotalSales] = useState(0);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
 
+  // Convert UTC to IST
   const convertToIST = (utcDate) => {
     const date = new Date(utcDate);
     return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   };
 
-  const filteredOrders = ordersData
-    .filter(
-      (order) =>
-        (order.id.toLowerCase().includes(search.toLowerCase()) ||
-          order.user.toLowerCase().includes(search.toLowerCase())) &&
-        (filter ? order.feedback === filter : true) &&
-        (userSearch
-          ? order.user.toLowerCase().includes(userSearch.toLowerCase())
-          : true)
-    )
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // 🔥 Fetch orders from backend with pagination and filtering
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          per_page: itemsPerPage,
+          ...(search && { search }),
+          ...(filter && { feedback: filter }),
+          ...(startDate && { start_date: startDate }),
+          ...(endDate && { end_date: endDate }),
+        });
 
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+        console.log("Query Params:", queryParams.toString()); // Debug: Log query params
+
+        const response = await fetch(
+          `${baseUrl}/orders?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
+        );
+        if (!response.ok)
+          throw new Error(`Failed to fetch orders: ${response.status}`);
+
+        const data = await response.json();
+        console.log("API Response:", data); // Debug: Log API response
+
+        if (!Array.isArray(data.data)) {
+          throw new Error("Orders data is not an array");
+        }
+
+        setOrders(data.data);
+        setTotalPages(data.total_pages || 1);
+        setTotalOrders(data.total || 0);
+        setTotalSales(data.total_sales || 0);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        setError("Failed to load orders. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [
+    baseUrl,
+    currentPage,
+    itemsPerPage,
+    search,
+    filter,
+    startDate,
+    endDate,
+    setOrders,
+    setTotalPages,
+    setTotalOrders,
+  ]);
 
   const openModal = (receiptText) => {
     setSelectedReceipt(receiptText);
@@ -66,14 +119,13 @@ const OrdersTable = ({
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
           "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update status");
-      }
+      if (!response.ok) throw new Error("Failed to update status");
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -84,6 +136,33 @@ const OrdersTable = ({
       console.error("Error updating status:", error);
       alert("Failed to update order status");
     }
+  };
+
+  // Pagination controls
+  const handlePrevious = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  // Generate page numbers (show limited range around current page)
+  const getPageNumbers = () => {
+    const maxPagesToShow = 5;
+    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    return Array.from(
+      { length: endPage - startPage + 1 },
+      (_, i) => startPage + i
+    );
+  };
+
+  // Validate and format date inputs
+  const handleDateChange = (setter) => (e) => {
+    const value = e.target.value;
+    console.log(`Date changed: ${setter.name} = ${value}`); // Debug: Log date changes
+    setter(value);
   };
 
   return (
@@ -102,19 +181,27 @@ const OrdersTable = ({
           <option value="3">3</option>
         </select>
         <input
-          type="text"
-          placeholder="Filter by User"
-          value={userSearch}
-          onChange={(e) => setUserSearch(e.target.value)}
+          type="date"
+          placeholder="Start Date"
+          value={startDate}
+          onChange={handleDateChange(setStartDate)}
+        />
+        <input
+          type="date"
+          placeholder="End Date"
+          value={endDate}
+          onChange={handleDateChange(setEndDate)}
         />
       </div>
 
-      {/* Count of filtered orders */}
-      <p style={{ marginTop: "10px", fontWeight: "bold" }}>
-        Total Orders: {filteredOrders.length}
-      </p>
+      {isLoading && <p>Loading orders...</p>}
+      {error && <p className="error">{error}</p>}
+      <div className="order-stats">
+        <p className="order-count">Total Orders: {totalOrders}</p>
+        <p className="order-sales">Total Sales: ₹{totalSales.toFixed(2)}</p>
+      </div>
 
-      <table>
+      <table className="orders-table">
         <thead>
           <tr>
             <th>Order ID</th>
@@ -128,7 +215,7 @@ const OrdersTable = ({
           </tr>
         </thead>
         <tbody>
-          {paginatedOrders.map((order) => (
+          {ordersData.map((order) => (
             <tr key={order.id}>
               <td>{order.id}</td>
               <td>{order.user}</td>
@@ -140,7 +227,7 @@ const OrdersTable = ({
                 <select
                   value={order.status}
                   onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                  className="bg-transparent outline-none">
+                  className="status-dropdown">
                   <option value="pending">pending</option>
                   <option value="delivered">delivered</option>
                   <option value="picked up">picked up</option>
@@ -148,7 +235,9 @@ const OrdersTable = ({
                 </select>
               </td>
               <td>
-                <button onClick={() => openModal(order.receipt)}>
+                <button
+                  onClick={() => openModal(order.receipt)}
+                  className="view-btn">
                   <img
                     src="/assets/show.png"
                     alt="View Receipt"
@@ -162,20 +251,27 @@ const OrdersTable = ({
       </table>
 
       <div className="pagination">
-        {Array.from({
-          length: Math.ceil(filteredOrders.length / itemsPerPage),
-        }).map((_, i) => (
-          <button key={i} onClick={() => setCurrentPage(i + 1)}>
-            {i + 1}
+        <button onClick={handlePrevious} disabled={currentPage === 1}>
+          Previous
+        </button>
+        {getPageNumbers().map((page) => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={currentPage === page ? "active" : ""}>
+            {page}
           </button>
         ))}
+        <button onClick={handleNext} disabled={currentPage === totalPages}>
+          Next
+        </button>
       </div>
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Receipt Text</h3>
-            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+            <pre className="receipt-text">
               {selectedReceipt.replace(/\\n/g, "\n")}
             </pre>
             <div className="modal-buttons">
@@ -188,55 +284,6 @@ const OrdersTable = ({
           </div>
         </div>
       )}
-
-      <style>
-        {`
-          .modal-buttons {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-top: 10px;
-          }
-          .modal-buttons button {
-            padding: 8px 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            background-color: rgb(56, 226, 47);
-            color: white;
-            font-size: 14px;
-          }
-          .modal-buttons button:hover {
-            background-color: rgba(33, 139, 12, 0.89);
-          }
-          .copy-feedback {
-            font-size: 12px;
-            color: #28a745;
-          }
-          .copy-feedback.error {
-            color: #dc3545;
-          }
-          .view-icon {
-            width: 16px;
-            height: 16px;
-            vertical-align: middle;
-            margin-right: 4px;
-          }
-          td button {
-            display: flex;
-            align-items: center;
-            padding: 6px 12px;
-            background-color: white;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-          }
-          td button:hover {
-            background-color: white;
-          }
-        `}
-      </style>
     </>
   );
 };

@@ -5,6 +5,7 @@ import OrdersTable from "../OrdersTable";
 import ProductsTable from "../ProductsTable";
 import VendorsTable from "../VendorsTable";
 import BillingTable from "../BillingTable";
+import Insights from "../Insights"; // Add this import
 import "./HomePage.css";
 
 const HomePage = () => {
@@ -12,18 +13,21 @@ const HomePage = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [joinDateSearch, setJoinDateSearch] = useState("");
   const [ordersData, setOrdersData] = useState([]);
   const [usersData, setUsersData] = useState([]);
   const [productsData, setProductsData] = useState([]);
   const [vendorsData, setVendorsData] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
 
   const itemsPerPage = 10;
   const alertSound = useRef(null);
   const userInteracted = useRef(false);
-  const baseUrl =
-    process.env.REACT_APP_API_BASE_URL ||
-    "https://python-whatsapp-bot-main-production-3c9c.up.railway.app";
+  const newOrderReceived = useRef(false);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,45 +85,12 @@ const HomePage = () => {
       return;
     }
 
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch(`${baseUrl}/orders`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          console.error("Orders data is not an array:", data);
-          return;
-        }
-
-        if (data.length !== ordersData.length && userInteracted.current) {
-          handlePlaySound();
-        }
-
-        setOrdersData((prev) => {
-          const newOrders = data.filter(
-            (order) => !prev.some((o) => o.id === order.id)
-          );
-          const combined = [...newOrders, ...prev];
-          combined.sort(
-            (a, b) => new Date(b.created_at) - new Date(a.created_at)
-          );
-          return combined;
-        });
-      } catch (error) {
-        console.error("Error fetching orders:", error.message);
-      }
-    };
-
     const fetchUsers = async () => {
       try {
         const response = await fetch(`${baseUrl}/users`, {
           headers: {
             Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
           },
         });
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
@@ -130,12 +101,7 @@ const HomePage = () => {
           return;
         }
 
-        setUsersData((prev) => {
-          const newUsers = data.filter(
-            (user) => !prev.some((u) => u.id === user.id)
-          );
-          return [...newUsers, ...prev];
-        });
+        setUsersData(data);
       } catch (error) {
         console.error("Error fetching users:", error.message);
       }
@@ -146,18 +112,22 @@ const HomePage = () => {
         const response = await fetch(`${baseUrl}/products`, {
           headers: {
             Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
           },
         });
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
 
-        if (!Array.isArray(data)) {
-          console.error("Products data is not an array:", data);
-          return;
-        }
+        const allProducts = [
+          ...(data.bakeries || []),
+          ...(data.fish || []),
+          ...(data.food || []),
+          ...(data.fruits || []),
+          ...(data.general || []),
+        ];
 
-        setProductsData(data);
-        console.log("Products data:", data);
+        setProductsData(allProducts);
+        console.log("Products data:", allProducts);
       } catch (error) {
         console.error("Error fetching products:", error.message);
       }
@@ -168,6 +138,7 @@ const HomePage = () => {
         const response = await fetch(`${baseUrl}/vendors`, {
           headers: {
             Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
           },
         });
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
@@ -184,13 +155,10 @@ const HomePage = () => {
       }
     };
 
-    // Initial data fetch
-    fetchOrders();
     fetchUsers();
     fetchProducts();
     fetchVendors();
 
-    // Set up SSE
     const eventSource = new EventSource(`${baseUrl}/events`);
 
     eventSource.onmessage = (event) => {
@@ -198,7 +166,8 @@ const HomePage = () => {
         const data = JSON.parse(event.data);
         console.log("SSE Message:", data);
         if (data.message === "New order created") {
-          fetchOrders();
+          newOrderReceived.current = true;
+          setCurrentPage(1);
         }
       } catch (error) {
         console.error("Error parsing SSE message:", error.message);
@@ -209,11 +178,10 @@ const HomePage = () => {
       console.error("SSE error:", error);
     };
 
-    // Cleanup SSE connection
     return () => {
       eventSource.close();
     };
-  }, [baseUrl, navigate, ordersData.length]);
+  }, [baseUrl, navigate]);
 
   return (
     <div className="homepage-container">
@@ -223,6 +191,11 @@ const HomePage = () => {
         </div>
 
         <div className="tabs">
+          <div
+            className={`tab ${tab === "Insights" ? "active" : ""}`}
+            onClick={() => setTab("Insights")}>
+            Insights
+          </div>
           <div
             className={`tab ${tab === "orders" ? "active" : ""}`}
             onClick={() => setTab("orders")}>
@@ -252,6 +225,9 @@ const HomePage = () => {
       </div>
 
       <div className="content">
+        {tab === "Insights" && (
+          <Insights search={search} setSearch={setSearch} />
+        )}
         {tab === "orders" && (
           <OrdersTable
             search={search}
@@ -260,9 +236,19 @@ const HomePage = () => {
             setFilter={setFilter}
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
             itemsPerPage={itemsPerPage}
             ordersData={ordersData}
             setOrders={setOrdersData}
+            totalPages={totalPages}
+            setTotalPages={setTotalPages}
+            totalOrders={totalOrders}
+            setTotalOrders={setTotalOrders}
+            newOrderReceived={newOrderReceived}
+            handlePlaySound={handlePlaySound}
           />
         )}
 
