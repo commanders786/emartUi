@@ -1,0 +1,385 @@
+/* ========== GLOBAL ========== */
+.catalogue-container {
+  padding: 20px;
+  background-color: #f7f8fa;
+  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
+}
+
+/* ========== HEADER ========== */
+.catalogue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.catalogue-header h2 {
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.add-btn {
+  background-color: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  font-weight: 500;
+}
+
+.add-btn:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* ========== CATEGORY TABS ========== */
+.category-tab {
+  display: flex;
+  gap: 40px; /* Space between category tabs */
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 70px; /* Increased vertical space below tabs (above search bar) */
+  scrollbar-width: thin;
+}
+
+.category-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.category-tabs::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+.tab-btn {
+  background-color: #e5e7eb;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #374151;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  background-color: #d1d5db;
+}
+
+.active-tab {
+  background-color: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* ========== SEARCH BAR ========== */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 20px;
+}
+
+.search-icon {
+  color: #6b7280;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.search-bar input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: transparent;
+}
+
+/* ========== PRODUCT LIST ========== */
+.product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.empty-category {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  margin-top: 30px;
+}
+
+/* ========== PRODUCT CARD ========== */
+.product-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 12px;
+  transition: 0.3s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.product-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.product-info {
+  cursor: pointer;
+}
+
+.product-info h3 {
+  font-size: 16px;
+  margin: 10px 0 4px;
+  color: #111827;
+}
+
+.product-info p {
+  font-size: 13px;
+  color: #6b7280;
+  height: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.price-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-top: 6px;
+}
+
+.sale-price {
+  color: #dc2626;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.price {
+  text-decoration: line-through;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* ========== ACTION ICONS ========== */
+.product-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.edit-icon {
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+.edit-icon:hover {
+  color: #2563eb;
+  transform: scale(1.1);
+}
+
+/* ========== TOGGLE SWITCH ========== */
+.switch {
+  position: relative;
+  width: 38px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d1d5db;
+  border-radius: 34px;
+  transition: 0.4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #10b981;
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* ========== POPUPS ========== */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+.popup {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  animation: fadeIn 0.25s ease;
+}
+
+.popup-scrollable {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.popup img.popup-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.preview-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Popup Buttons */
+.popup-buttons {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.popup-buttons button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.popup-buttons button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* SUCCESS POPUP */
+.success-popup {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  animation: fadeInUp 0.3s ease;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 600px) {
+  .product-list {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .catalogue-header h2 {
+    font-size: 20px;
+  }
+
+  .add-btn {
+    padding: 6px 12px;
+  }
+
+  .product-image {
+    height: 130px;
+  }
+
+  .tab-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+/* normal price (when there's no discount) */
+.price.no-discount {
+  text-decoration: none;
+  color: #000; /* or your preferred color */
+}
+
+/* original price (when discounted) */
+.price.original-price {
+  text-decoration: line-through;
+  color: #888;
+}

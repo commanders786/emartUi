@@ -7,6 +7,7 @@ import VendorsTable from "../VendorsTable";
 import BillingTable from "../BillingTable";
 import Insights from "../Insights"; // Add this import
 import "./HomePage.css";
+import Catalogue from "../Catalogue";
 
 const HomePage = () => {
   const [tab, setTab] = useState("orders");
@@ -212,6 +213,11 @@ const HomePage = () => {
             Products
           </div>
           <div
+            className={`tab ${tab === "catalogue" ? "active" : ""}`}
+            onClick={() => setTab("catalogue")}>
+            Catalogue
+          </div>
+          <div
             className={`tab ${tab === "vendors" ? "active" : ""}`}
             onClick={() => setTab("vendors")}>
             Vendors
@@ -251,7 +257,6 @@ const HomePage = () => {
             handlePlaySound={handlePlaySound}
           />
         )}
-
         {tab === "users" && (
           <UsersTable
             usersData={usersData}
@@ -261,7 +266,6 @@ const HomePage = () => {
             setJoinDateSearch={setJoinDateSearch}
           />
         )}
-
         {tab === "products" && (
           <ProductsTable
             productsData={productsData}
@@ -269,7 +273,7 @@ const HomePage = () => {
             setSearch={setSearch}
           />
         )}
-
+        {tab === "catalogue" && <Catalogue />}
         {tab === "vendors" && (
           <VendorsTable
             vendorsData={vendorsData}
@@ -277,7 +281,6 @@ const HomePage = () => {
             setSearch={setSearch}
           />
         )}
-
         {tab === "billing" && (
           <BillingTable search={search} setSearch={setSearch} />
         )}
